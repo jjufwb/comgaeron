@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GONGGU - 공구 플랫폼</title>
+    <style>
+        @font-face {
+            font-family: 'GMarketSans';
+            src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansMedium.woff') format('woff');
+            font-weight: 500; font-display: swap;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'GMarketSans',sans-serif; background:#f5f5f5; }
+        .page { display:none; min-height:100vh; background:#fff; }
+        .page.active { display:block; }
+
+        .header, .detail-header, .write-header-bar, .auth-header-bar, .mypage-header-bar {
+            position:sticky; top:0; z-index:100; background:#fff;
+        }
+
+        /* 메인 헤더 */
+        .header { border-bottom:1px solid #e8e8e8; padding:15px 20px; display:flex; justify-content:space-between; align-items:center; height:60px; }
+        .header h1 { font-size:24px; font-weight:bold; flex:1; }
+        .header-buttons { display:flex; gap:10px; }
+        .header-buttons button { padding:8px 15px; background:#f0f0f0; border:1px solid #ddd; border-radius:5px; cursor:pointer; font-size:14px; font-family:'GMarketSans',sans-serif; transition:background 0.2s; }
+        .header-buttons button:hover { background:#e0e0e0; }
+        .header-buttons .btn-logout { background:#fff3f3; border-color:#ffcccc; color:#c0392b; }
+        .header-buttons .btn-logout:hover { background:#ffe0e0; }
+
+        /* 카테고리 + 정렬 바 */
+        .categories { display:flex; gap:10px; padding:14px 20px; background:#f9f9f9; border-bottom:1px solid #e8e8e8; overflow-x:auto; position:sticky; top:60px; z-index:99; align-items:center; }
+        .category-btn { padding:8px 18px; background:#fff; border:1px solid #ddd; border-radius:20px; cursor:pointer; font-size:14px; font-family:'GMarketSans',sans-serif; white-space:nowrap; transition:all 0.2s; flex-shrink:0; }
+        .category-btn:hover, .category-btn.active { background:#2d7a3a; color:white; border-color:#2d7a3a; }
+        .sort-divider { width:1px; height:24px; background:#ddd; flex-shrink:0; margin:0 4px; }
+        .sort-btn { padding:8px 14px; background:#fff; border:1px solid #ddd; border-radius:20px; cursor:pointer; font-size:13px; font-family:'GMarketSans',sans-serif; white-space:nowrap; transition:all 0.2s; flex-shrink:0; display:flex; align-items:center; gap:5px; }
+        .sort-btn:hover { border-color:#2d7a3a; color:#2d7a3a; }
+        .sort-btn.active { background:#e8f5e9; border-color:#2d7a3a; color:#2d7a3a; }
+        .sort-btn .icon { font-size:14px; }
+
+        /* 그리드 */
+        .posts-container { padding:20px; display:grid; grid-template-columns:repeat(4,1fr); gap:15px; }
+
+        /* 카드 */
+        .post-card { background:#fff; border:0.5px solid #d8d8d8; border-radius:16px; padding:14px 14px 10px; cursor:pointer; transition:border-color 0.2s,background 0.2s; aspect-ratio:1; display:flex; flex-direction:column; justify-content:space-between; }
+        .post-card:hover { border-color:#2d7a3a; background:#f0faf2; }
+        .post-status { display:flex; align-items:center; gap:5px; margin-bottom:6px; }
+        .status-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+        .status-dot--active { background:#2d7a3a; } .status-dot--urgent { background:#e53935; } .status-dot--done { background:#b0b0b0; }
+        .status-text { font-size:12px; font-family:'GMarketSans',sans-serif; }
+        .status-text--active { color:#2d7a3a; } .status-text--urgent { color:#e53935; } .status-text--done { color:#b0b0b0; }
+        .post-body { flex:1; display:flex; flex-direction:column; justify-content:center; text-align:center; }
+        .post-title { font-size:17px; font-weight:bold; margin-bottom:6px; font-family:'GMarketSans',sans-serif; }
+        .post-title--done { color:#b0b0b0; }
+        .post-location { font-size:14px; color:#888; font-family:'GMarketSans',sans-serif; }
+        .post-distance { font-size:12px; color:#2d7a3a; margin-top:3px; font-family:'GMarketSans',sans-serif; }
+        .progress-bar-wrap { margin-top:10px; }
+        .progress-bar-bg { width:100%; height:7px; background:#e8e8e8; border-radius:99px; overflow:hidden; }
+        .progress-bar-fill { height:100%; border-radius:99px; background:#2d7a3a; transition:width 0.4s; }
+        .progress-bar-fill--done { background:#b0b0b0; }
+
+        .footer { padding:20px; text-align:center; border-top:1px solid #ddd; margin-top:20px; }
+        .write-post-btn { padding:12px 30px; background:#2d7a3a; color:white; border:none; border-radius:5px; font-size:16px; font-family:'GMarketSans',sans-serif; cursor:pointer; transition:background 0.2s; }
+        .write-post-btn:hover { background:#245f2d; }
+
+        /* 상세 페이지 */
+        .detail-header { display:flex; justify-content:space-between; align-items:center; padding:15px 20px; border-bottom:1px solid #e8e8e8; height:60px; }
+        .back-btn { width:36px; height:36px; background:transparent; border:1px solid #d0d0d0; border-radius:50%; cursor:pointer; font-size:18px; color:#333; display:flex; align-items:center; justify-content:center; font-family:'GMarketSans',sans-serif; transition:border-color 0.2s; }
+        .back-btn:hover { border-color:#999; }
+        .title-label { flex:1; text-align:center; font-size:16px; font-weight:bold; }
+        .detail-container { padding:20px; max-width:800px; margin:0 auto; }
+        .detail-image { width:100%; height:300px; background:#eee; border-radius:12px; margin-bottom:20px; display:flex; align-items:center; justify-content:center; color:#aaa; overflow:hidden; }
+        .detail-title { font-size:22px; font-weight:bold; margin-bottom:12px; }
+        .detail-content { font-size:15px; line-height:1.7; margin-bottom:12px; color:#333; }
+        .detail-location { font-size:15px; margin-bottom:12px; color:#666; }
+        .detail-link { font-size:14px; margin-bottom:20px; padding:10px 14px; background:#f5f5f5; border-radius:8px; word-break:break-all; }
+        .detail-link a { color:#2d7a3a; text-decoration:none; }
+        .detail-link a:hover { text-decoration:underline; }
+
+
+
+        .participants-section { margin:20px 0; padding:18px; background:#f9f9f9; border-radius:12px; }
+        .participants-label { font-size:14px; font-weight:bold; margin-bottom:14px; }
+        .detail-progress-wrap { margin-bottom:10px; }
+        .detail-progress-bg { width:100%; height:8px; background:#e0e0e0; border-radius:99px; overflow:hidden; }
+        .detail-progress-fill { height:100%; border-radius:99px; background:#2d7a3a; transition:width 0.4s; }
+        .participant-count { font-size:13px; text-align:center; color:#666; margin-top:8px; }
+        .participate-btn { display:block; margin:14px auto 0; padding:12px 0; width:70%; background:#2d7a3a; color:white; border:none; border-radius:99px; font-size:15px; font-family:'GMarketSans',sans-serif; cursor:pointer; transition:background 0.2s; }
+        .participate-btn:hover:not(:disabled) { background:#245f2d; }
+        .participate-btn:disabled,.participate-btn.full { background:#ccc; cursor:not-allowed; }
+
+        /* 글쓰기 페이지 */
+        .write-header-bar { border-bottom:1px solid #e8e8e8; padding:15px 20px; display:flex; justify-content:space-between; align-items:center; height:60px; }
+        .write-header-bar h2 { font-size:18px; }
+        .write-header-bar button { width:36px; height:36px; background:transparent; border:1px solid #d0d0d0; border-radius:50%; cursor:pointer; font-size:18px; color:#333; display:flex; align-items:center; justify-content:center; font-family:'GMarketSans',sans-serif; transition:border-color 0.2s; }
+        .write-header-bar button:hover { border-color:#999; }
+        .write-container { padding:20px; max-width:600px; margin:0 auto; }
+        .form-group { margin-bottom:20px; }
+        .form-group label { display:block; font-size:14px; font-weight:bold; margin-bottom:8px; color:#333; }
+        .form-group input, .form-group select, .form-group textarea { width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:14px; font-family:'GMarketSans',sans-serif; }
+        .form-group input[type="number"] { font-size:18px; padding:12px; }
+        .form-group input[type="file"] { padding:8px; }
+        .form-group textarea { resize:vertical; min-height:100px; }
+        .submit-btn { width:100%; padding:12px; background:#2d7a3a; color:white; border:none; border-radius:8px; font-size:16px; font-family:'GMarketSans',sans-serif; cursor:pointer; transition:background 0.2s; }
+        .submit-btn:hover { background:#245f2d; }
+
+        /* 위치 선택 UI */
+        .location-input-wrap { position:relative; }
+        .location-input-wrap input { padding-right:90px; }
+        .location-gps-btn { position:absolute; right:8px; top:50%; transform:translateY(-50%); padding:5px 10px; background:#2d7a3a; color:white; border:none; border-radius:6px; font-size:12px; font-family:'GMarketSans',sans-serif; cursor:pointer; white-space:nowrap; }
+        .location-gps-btn:hover { background:#245f2d; }
+        .location-dropdown { position:absolute; left:0; right:0; top:calc(100% + 4px); background:#fff; border:1px solid #ddd; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.12); z-index:200; max-height:240px; overflow-y:auto; display:none; }
+        .location-dropdown.open { display:block; }
+        .location-dropdown-item { display:block; width:100%; padding:11px 14px; background:#fff; border:none; border-bottom:1px solid #f0f0f0; text-align:left; font-family:'GMarketSans',sans-serif; cursor:pointer; }
+        .location-dropdown-item:last-child { border-bottom:none; }
+        .location-dropdown-item:hover, .location-dropdown-item:focus { background:#f0faf2; outline:none; }
+        .location-dropdown-item-name { font-size:14px; font-weight:bold; color:#1a1a1a; }
+        .location-dropdown-item-addr { font-size:12px; color:#999; margin-top:2px; }
+
+        /* 로그인 / 회원가입 */
+        .auth-header-bar { border-bottom:1px solid #e8e8e8; padding:15px 20px; display:flex; align-items:center; gap:12px; height:60px; }
+        .auth-header-bar h2 { font-size:18px; }
+        .auth-container { padding:40px 20px; max-width:420px; margin:0 auto; }
+        .auth-container .logo { font-size:32px; font-weight:bold; text-align:center; color:#2d7a3a; margin-bottom:8px; }
+        .auth-container .logo-sub { font-size:14px; color:#888; text-align:center; margin-bottom:32px; }
+        .auth-input-group { margin-bottom:16px; }
+        .auth-input-group label { display:block; font-size:13px; color:#555; margin-bottom:6px; }
+        .auth-input-group input { width:100%; padding:12px 14px; border:1px solid #ddd; border-radius:10px; font-size:15px; font-family:'GMarketSans',sans-serif; outline:none; transition:border-color 0.2s; }
+        .auth-input-group input:focus { border-color:#2d7a3a; }
+        .auth-main-btn { width:100%; padding:13px; background:#2d7a3a; color:white; border:none; border-radius:10px; font-size:16px; font-family:'GMarketSans',sans-serif; cursor:pointer; margin-top:8px; transition:background 0.2s; }
+        .auth-main-btn:hover { background:#245f2d; }
+        .auth-switch { text-align:center; margin-top:20px; font-size:14px; color:#888; }
+        .auth-switch span { color:#2d7a3a; cursor:pointer; font-weight:bold; }
+        .auth-switch span:hover { text-decoration:underline; }
+        .auth-error { background:#fff0f0; color:#c0392b; border:1px solid #ffcccc; border-radius:8px; padding:10px 14px; font-size:13px; margin-bottom:14px; display:none; }
+        .auth-error.show { display:block; }
+
+        /* 마이페이지 */
+        .mypage-header-bar { border-bottom:1px solid #e8e8e8; padding:15px 20px; display:flex; align-items:center; gap:12px; height:60px; }
+        .mypage-header-bar h2 { font-size:18px; flex:1; }
+        .mypage-container { padding:20px; max-width:700px; margin:0 auto; }
+        .mypage-profile { display:flex; align-items:center; gap:16px; padding:20px; background:#f0faf2; border-radius:16px; margin-bottom:28px; }
+        .mypage-avatar { width:56px; height:56px; border-radius:50%; background:#2d7a3a; display:flex; align-items:center; justify-content:center; font-size:24px; color:white; flex-shrink:0; }
+        .mypage-username { font-size:18px; font-weight:bold; color:#1a1a1a; }
+        .mypage-username-sub { font-size:13px; color:#888; margin-top:3px; }
+        .mypage-section-title { font-size:15px; font-weight:bold; color:#333; margin-bottom:14px; padding-bottom:8px; border-bottom:1px solid #e8e8e8; }
+        .mypage-empty { text-align:center; padding:40px 0; color:#bbb; font-size:14px; }
+        .my-post-list { display:flex; flex-direction:column; gap:10px; }
+        .my-post-item { display:flex; align-items:center; gap:14px; padding:14px 16px; border:0.5px solid #e0e0e0; border-radius:12px; cursor:pointer; transition:border-color 0.2s,background 0.2s; }
+        .my-post-item:hover { border-color:#2d7a3a; background:#f0faf2; }
+        .my-post-item-info { flex:1; min-width:0; }
+        .my-post-item-title { font-size:15px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .my-post-item-title--done { color:#b0b0b0; }
+        .my-post-item-meta { font-size:12px; color:#999; margin-top:3px; }
+        .my-post-item-bar { width:80px; flex-shrink:0; }
+        .my-post-item-bar .progress-bar-bg { height:6px; }
+
+        /* GPS 상태 토스트 */
+        .gps-toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.75); color:#fff; padding:10px 20px; border-radius:99px; font-size:13px; font-family:'GMarketSans',sans-serif; z-index:300; pointer-events:none; opacity:0; transition:opacity 0.3s; }
+        .gps-toast.show { opacity:1; }
+
+        @media (max-width:1200px) { .posts-container { grid-template-columns:repeat(3,1fr); } }
+        @media (max-width:768px)  { .posts-container { grid-template-columns:repeat(2,1fr); } }
+        @media (max-width:600px)  {
+            .header { flex-direction:column; height:auto; gap:10px; }
+            .detail-container,.write-container,.auth-container,.mypage-container { padding:15px; }
+            .posts-container { grid-template-columns:1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- GPS 토스트 -->
+<div class="gps-toast" id="gpsToast"></div>
+
+<!-- 페이지 1: 메인 -->
+<div id="page1" class="page active">
+    <div class="header">
+        <h1>GONGGU</h1>
+        <div class="header-buttons" id="headerButtons"></div>
+    </div>
+    <div class="categories">
+        <button class="category-btn active" onclick="filterCategory('전체',this)">전체</button>
+        <button class="category-btn" onclick="filterCategory('식료품',this)">식료품</button>
+        <button class="category-btn" onclick="filterCategory('잡화',this)">잡화</button>
+        <button class="category-btn" onclick="filterCategory('학용품',this)">학용품</button>
+        <button class="category-btn" onclick="filterCategory('배달',this)">배달</button>
+        <button class="category-btn" onclick="filterCategory('OTT',this)">OTT</button>
+        <div class="sort-divider"></div>
+        <button class="sort-btn" id="sortByDistBtn" onclick="toggleDistanceSort()">
+            <span class="icon">📍</span> 거리순
+        </button>
+    </div>
+    <div class="posts-container" id="postsContainer"></div>
+    <div class="footer">
+        <button class="write-post-btn" onclick="goWrite()">글쓰기</button>
+    </div>
+</div>
+
+<!-- 페이지 2: 상세 -->
+<div id="page2" class="page">
+    <div class="detail-header">
+        <button class="back-btn" onclick="showPage(1)">‹</button>
+        <div class="title-label">게시물 상세</div>
+        <div style="width:36px"></div>
+    </div>
+    <div class="detail-container">
+        <div class="detail-image" id="detailImage">이미지 영역</div>
+        <div class="detail-title" id="detailTitle"></div>
+        <div class="detail-content" id="detailContent"></div>
+        <div class="detail-location" id="detailLocation"></div>
+        <div class="detail-link">오픈채팅방: <a id="detailLink" href="#" target="_blank"></a></div>
+
+        <div class="participants-section">
+            <div class="participants-label">참여자</div>
+            <div class="detail-progress-wrap">
+                <div class="detail-progress-bg">
+                    <div class="detail-progress-fill" id="detailProgressFill" style="width:0%"></div>
+                </div>
+            </div>
+            <div class="participant-count" id="participantCount">0/0</div>
+            <button class="participate-btn" id="participateBtn" onclick="joinParticipant()">참여할게요</button>
+        </div>
+    </div>
+</div>
+
+<!-- 페이지 3: 글쓰기 -->
+<div id="page3" class="page">
+    <div class="write-header-bar">
+        <button onclick="showPage(1)">‹</button>
+        <h2>새 글 작성</h2>
+    </div>
+    <div class="write-container">
+        <form id="writeForm" onsubmit="submitPost(event)">
+            <div class="form-group">
+                <label>이미지:</label>
+                <input type="file" id="image" accept="image/*">
+            </div>
+            <div class="form-group">
+                <label>카테고리:</label>
+                <select id="category" required>
+                    <option value="">선택하세요</option>
+                    <option value="식료품">식료품</option>
+                    <option value="잡화">잡화</option>
+                    <option value="학용품">학용품</option>
+                    <option value="배달">배달</option>
+                    <option value="OTT">OTT</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>제목:</label>
+                <input type="text" id="title" placeholder="제목을 입력하세요" required>
+            </div>
+            <div class="form-group">
+                <label>내용:</label>
+                <textarea id="content" placeholder="내용을 입력하세요" required></textarea>
+            </div>
+            <!-- 위치 선택 (카카오 연동) -->
+            <div class="form-group">
+                <label>위치 (구/동 검색 또는 GPS):</label>
+                <div class="location-input-wrap" id="locationWrap">
+                    <input type="text" id="locationInput" placeholder="예: 동작구, 북평동..." autocomplete="off" oninput="onLocationInput()">
+                    <button type="button" class="location-gps-btn" onclick="useMyGPS()">📍 내 위치</button>
+                    <div class="location-dropdown" id="locationDropdown"></div>
+                </div>
+                <input type="hidden" id="locationLat">
+                <input type="hidden" id="locationLng">
+                <input type="hidden" id="locationText">
+            </div>
+            <div class="form-group">
+                <label>인원 수:</label>
+                <input type="number" id="people" placeholder="인원 수를 입력하세요" min="1" required>
+            </div>
+            <div class="form-group">
+                <label>오픈채팅방 링크:</label>
+                <input type="url" id="link" placeholder="https://open.kakao.com/..." required>
+            </div>
+            <button type="submit" class="submit-btn">올리기</button>
+        </form>
+    </div>
+</div>
+
+<!-- 페이지 4: 로그인 -->
+<div id="page4" class="page">
+    <div class="auth-header-bar">
+        <button class="back-btn" onclick="showPage(1)">‹</button>
+        <h2>로그인</h2>
+    </div>
+    <div class="auth-container">
+        <div class="logo">GONGGU</div>
+        <div class="logo-sub">함께 사면 더 저렴하게</div>
+        <div class="auth-error" id="loginError"></div>
+        <div class="auth-input-group">
+            <label>아이디</label>
+            <input type="text" id="loginId" placeholder="아이디를 입력하세요">
+        </div>
+        <div class="auth-input-group">
+            <label>비밀번호</label>
+            <input type="password" id="loginPw" placeholder="비밀번호를 입력하세요" onkeydown="if(event.key==='Enter')doLogin()">
+        </div>
+        <button class="auth-main-btn" onclick="doLogin()">로그인</button>
+        <div class="auth-switch">계정이 없으신가요? <span onclick="showPage(5)">회원가입</span></div>
+    </div>
+</div>
+
+<!-- 페이지 5: 회원가입 -->
+<div id="page5" class="page">
+    <div class="auth-header-bar">
+        <button class="back-btn" onclick="showPage(4)">‹</button>
+        <h2>회원가입</h2>
+    </div>
+    <div class="auth-container">
+        <div class="logo">GONGGU</div>
+        <div class="logo-sub">새 계정 만들기</div>
+        <div class="auth-error" id="signupError"></div>
+        <div class="auth-input-group">
+            <label>아이디</label>
+            <input type="text" id="signupId" placeholder="아이디를 입력하세요">
+        </div>
+        <div class="auth-input-group">
+            <label>닉네임</label>
+            <input type="text" id="signupNick" placeholder="닉네임을 입력하세요">
+        </div>
+        <div class="auth-input-group">
+            <label>비밀번호</label>
+            <input type="password" id="signupPw" placeholder="비밀번호를 입력하세요" onkeydown="if(event.key==='Enter')doSignup()">
+        </div>
+        <button class="auth-main-btn" onclick="doSignup()">가입하기</button>
+        <div class="auth-switch">이미 계정이 있으신가요? <span onclick="showPage(4)">로그인</span></div>
+    </div>
+</div>
+
+<!-- 페이지 6: 마이페이지 -->
+<div id="page6" class="page">
+    <div class="mypage-header-bar">
+        <button class="back-btn" onclick="showPage(1)">‹</button>
+        <h2>마이페이지</h2>
+    </div>
+    <div class="mypage-container">
+        <div class="mypage-profile">
+            <div class="mypage-avatar" id="mypageAvatar">🙂</div>
+            <div>
+                <div class="mypage-username" id="mypageUsername">-</div>
+                <div class="mypage-username-sub" id="mypageUserId">-</div>
+            </div>
+        </div>
+        <div class="mypage-section-title">내가 올린 공구 글</div>
+        <div id="myPostList"></div>
+    </div>
+</div>
+
+<script>
+const KAKAO_REST_KEY = '4c4c12aa6eca5cd49959201dc7127f8d';
+
+// ===== 데이터 (lat/lng 추가) =====
+let posts = [
+    {id:1,category:'식료품',title:'계란 30판 공구하실 분',content:'계란 10알씩 나눠가질 세 분 구합니다.',location:'📍동작구 상도동',lat:37.5063,lng:126.9440,link:'https://open.kakao.com/example1',people:4,participants:1,image:null,author:'admin'},
+    {id:2,category:'식료품',title:'사과 공구하실 분',content:'사과 10개씩 나눠가질 세 분 구합니다.',location:'📍동작구 노량진동',lat:37.5130,lng:126.9425,link:'https://open.kakao.com/example2',people:4,participants:1,image:null,author:'admin'},
+    {id:3,category:'잡화',title:'선풍기 1+1 같이 사실 분',content:'반 값으로 삽시다',location:'📍서초구 방배동',lat:37.4817,lng:126.9974,link:'https://open.kakao.com/example3',people:4,participants:1,image:null,author:'admin'},
+    {id:4,category:'잡화',title:'파우치 공구하실 분',content:'여러 개 사서 나눠가져요',location:'📍마포구 합정동',lat:37.5495,lng:126.9138,link:'https://open.kakao.com/example4',people:4,participants:3,image:null,author:'admin'},
+    {id:5,category:'학용품',title:'샤프 공구하실 분',content:'저렴한 가격으로 사서 나눠가실 세 분 구합니다.',location:'📍강남구 역삼동',lat:37.5007,lng:127.0368,link:'https://open.kakao.com/example5',people:4,participants:4,image:null,author:'admin'},
+    {id:6,category:'학용품',title:'지우개',content:'지우개 30개 공구해요.',location:'📍송파구 잠실동',lat:37.5145,lng:127.1059,link:'https://open.kakao.com/example6',people:4,participants:1,image:null,author:'admin'},
+    {id:7,category:'배달',title:'엽떡 같이 시키실 분',content:'엽떡 하나는 너무 많아서 나눠 드실 분?',location:'📍은평구 녹번동',lat:37.6101,lng:126.9271,link:'https://open.kakao.com/example7',people:4,participants:1,image:null,author:'admin'},
+    {id:8,category:'배달',title:'피자 같이 시키실 분',content:'피자 한 판 나눠요.',location:'📍동작구 사당동',lat:37.4763,lng:126.9816,link:'https://open.kakao.com/example8',people:4,participants:1,image:null,author:'admin'},
+    {id:9,category:'OTT',title:'넷플릭스 같이 쓰실 분',content:'4인 요금제 같이 쓰실 분 구해요.',location:'📍성동구 성수동',lat:37.5446,lng:127.0567,link:'https://open.kakao.com/example9',people:4,participants:1,image:null,author:'admin'},
+    {id:10,category:'OTT',title:'왓챠 공구하실 분',content:'왓챠 같이 쓰실 분 구해요.',location:'📍노원구 공릉동',lat:37.6259,lng:127.0752,link:'https://open.kakao.com/example10',people:4,participants:1,image:null,author:'admin'}
+];
+
+let currentCategory = '전체';
+let currentPostId = null;
+let myLat = null, myLng = null;
+let sortByDistance = false;
+let searchTimer = null;
+
+// ===== 인증 =====
+function getUsers() { return JSON.parse(localStorage.getItem('gonggu_users')||'[]'); }
+function saveUsers(u) { localStorage.setItem('gonggu_users',JSON.stringify(u)); }
+function getCurrentUser() { return JSON.parse(localStorage.getItem('gonggu_current')||'null'); }
+function setCurrentUser(u) { localStorage.setItem('gonggu_current',JSON.stringify(u)); }
+function logout() { localStorage.removeItem('gonggu_current'); updateHeader(); showPage(1); }
+
+// ===== 헤더 =====
+function updateHeader() {
+    const user = getCurrentUser();
+    const btns = document.getElementById('headerButtons');
+    btns.innerHTML = user
+        ? `<button onclick="showMyPage()">마이페이지</button><button class="btn-logout" onclick="logout()">로그아웃</button>`
+        : `<button onclick="showPage(4)">로그인</button><button onclick="showPage(5)">회원가입</button>`;
+}
+
+// ===== 페이지 전환 =====
+function showPage(n) {
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.getElementById('page'+n).classList.add('active');
+    window.scrollTo(0,0);
+}
+
+function goWrite() {
+    if (!getCurrentUser()) { alert('로그인이 필요합니다.'); showPage(4); return; }
+    showPage(3);
+}
+
+// ===== 카테고리 =====
+function filterCategory(cat, btn) {
+    currentCategory = cat;
+    document.querySelectorAll('.category-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    renderPosts();
+}
+
+// ===== 거리 계산 (Haversine) =====
+function calcDist(lat1, lng1, lat2, lng2) {
+    const R = 6371;
+    const dLat = (lat2-lat1)*Math.PI/180;
+    const dLng = (lng2-lng1)*Math.PI/180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function formatDist(km) {
+    return km < 1 ? Math.round(km*1000)+'m' : km.toFixed(1)+'km';
+}
+
+// ===== 거리순 토글 =====
+function toggleDistanceSort() {
+    if (!sortByDistance) {
+        showToast('📍 내 위치를 확인하는 중...');
+        navigator.geolocation.getCurrentPosition(
+            pos => {
+                myLat = pos.coords.latitude;
+                myLng = pos.coords.longitude;
+                sortByDistance = true;
+                document.getElementById('sortByDistBtn').classList.add('active');
+                showToast('✅ 거리순으로 정렬했어요');
+                renderPosts();
+            },
+            () => showToast('❌ 위치 권한이 필요해요')
+        );
+    } else {
+        sortByDistance = false;
+        document.getElementById('sortByDistBtn').classList.remove('active');
+        renderPosts();
+    }
+}
+
+// ===== 상태 =====
+function getStatus(post) {
+    if (post.participants >= post.people) return 'done';
+    if (post.people - post.participants === 1) return 'urgent';
+    return 'active';
+}
+
+// ===== 메인 렌더링 =====
+function renderPosts() {
+    const container = document.getElementById('postsContainer');
+    container.innerHTML = '';
+    let filtered = currentCategory==='전체' ? [...posts] : posts.filter(p=>p.category===currentCategory);
+
+    if (sortByDistance && myLat !== null) {
+        filtered.sort((a,b) => {
+            const da = (a.lat&&a.lng) ? calcDist(myLat,myLng,a.lat,a.lng) : 9999;
+            const db = (b.lat&&b.lng) ? calcDist(myLat,myLng,b.lat,b.lng) : 9999;
+            return da - db;
+        });
+    }
+
+    filtered.forEach(post => {
+        const status = getStatus(post);
+        const pct = Math.round((post.participants/post.people)*100);
+        const isDone = status==='done';
+        const label = {done:'완료',urgent:'임박',active:'진행 중'}[status];
+        const distHtml = (sortByDistance && myLat !== null && post.lat && post.lng)
+            ? `<div class="post-distance">${formatDist(calcDist(myLat,myLng,post.lat,post.lng))} 거리</div>` : '';
+
+        const card = document.createElement('div');
+        card.className = 'post-card'+(isDone?' post-card--completed':'');
+        card.onclick = ()=>viewPost(post.id);
+        card.innerHTML = `
+            <div class="post-status">
+                <div class="status-dot status-dot--${status}"></div>
+                <span class="status-text status-text--${status}">${label}</span>
+            </div>
+            <div class="post-body">
+                <div class="post-title${isDone?' post-title--done':''}">${post.title}</div>
+                <div class="post-location">${post.location}</div>
+                ${distHtml}
+            </div>
+            <div class="progress-bar-wrap">
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill${isDone?' progress-bar-fill--done':''}" style="width:${pct}%"></div>
+                </div>
+            </div>`;
+        container.appendChild(card);
+    });
+}
+
+// ===== 상세 페이지 =====
+function viewPost(postId) {
+    currentPostId = postId;
+    const post = posts.find(p=>p.id===postId);
+    if (!post) return;
+
+    const img = document.getElementById('detailImage');
+    img.innerHTML = post.image
+        ? `<img src="${post.image}" style="width:100%;height:100%;object-fit:cover;">`
+        : '이미지 영역';
+
+    document.getElementById('detailTitle').textContent = post.title;
+    document.getElementById('detailContent').textContent = post.content;
+    document.getElementById('detailLocation').textContent = post.location;
+    document.getElementById('detailLink').textContent = post.link;
+    document.getElementById('detailLink').href = post.link;
+    document.getElementById('participantCount').textContent = `${post.participants}/${post.people}`;
+    document.getElementById('detailProgressFill').style.width = Math.round((post.participants/post.people)*100)+'%';
+
+    const btn = document.getElementById('participateBtn');
+    if (post.participants >= post.people) {
+        btn.classList.add('full'); btn.textContent='모집 완료'; btn.disabled=true;
+    } else {
+        btn.classList.remove('full'); btn.textContent='참여할게요'; btn.disabled=false;
+    }
+
+    showPage(2);
+}
+
+function joinParticipant() {
+    if (!currentPostId) return;
+    const post = posts.find(p=>p.id===currentPostId);
+    if (post && post.participants < post.people) {
+        post.participants++;
+        renderPosts();
+        viewPost(currentPostId);
+    }
+}
+
+// ===== 위치 검색 (인라인 드롭다운) =====
+let searchAbortController = null;
+
+function onLocationInput() {
+    const query = document.getElementById('locationInput').value.trim();
+    document.getElementById('locationText').value = '';
+    document.getElementById('locationLat').value = '';
+    document.getElementById('locationLng').value = '';
+    if (!query) { closeDropdown(); return; }
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => searchLocation(query), 350);
+}
+
+function searchLocation(query) {
+    if (searchAbortController) searchAbortController.abort();
+    searchAbortController = new AbortController();
+    const signal = searchAbortController.signal;
+
+    Promise.all([
+        fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(query)}&size=10`, {
+            headers: { 'Authorization': 'KakaoAK ' + KAKAO_REST_KEY }, signal
+        }).then(r => r.json()).catch(() => ({ documents: [] })),
+        fetch(`https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=15`, {
+            headers: { 'Authorization': 'KakaoAK ' + KAKAO_REST_KEY }, signal
+        }).then(r => r.json()).catch(() => ({ documents: [] }))
+    ]).then(([addrData, kwData]) => {
+        const seen = new Set();
+        const items = [];
+
+        function extractLabel(addressName) {
+            if (!addressName) return null;
+            const parts = addressName.split(' ');
+            const regionIdx = parts.reduce((best, p, i) =>
+                ['구','군','시'].some(s => p.endsWith(s)) ? i : best, -1);
+            if (regionIdx !== -1 && parts[regionIdx+1] &&
+                ['동','읍','면','리'].some(s => parts[regionIdx+1].endsWith(s))) {
+                return `${parts[regionIdx]} ${parts[regionIdx+1]}`;
+            }
+            if (regionIdx !== -1) return parts[regionIdx];
+            return parts.slice(-2).join(' ');
+        }
+
+        (addrData.documents || []).forEach(doc => {
+            const a = doc.address || doc.road_address;
+            if (!a) return;
+            const label = extractLabel(a.address_name);
+            if (label && !seen.has(label)) {
+                seen.add(label);
+                items.push({ label, addr: a.address_name, lat: a.y, lng: a.x });
+            }
+        });
+        (kwData.documents || []).forEach(doc => {
+            const label = extractLabel(doc.address_name);
+            if (label && !seen.has(label)) {
+                seen.add(label);
+                items.push({ label, addr: doc.address_name, lat: doc.y, lng: doc.x });
+            }
+        });
+
+        renderDropdown(items);
+    }).catch(() => {});
+}
+
+function renderDropdown(items) {
+    const dd = document.getElementById('locationDropdown');
+    dd.innerHTML = '';
+    if (!items.length) { closeDropdown(); return; }
+
+    items.forEach(item => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'location-dropdown-item';
+        btn.innerHTML = `<div class="location-dropdown-item-name">${item.label}</div><div class="location-dropdown-item-addr">${item.addr || ''}</div>`;
+        btn.addEventListener('click', () => selectLocation(item));
+        dd.appendChild(btn);
+    });
+    dd.classList.add('open');
+}
+
+function selectLocation(item) {
+    document.getElementById('locationInput').value = item.label;
+    document.getElementById('locationText').value = item.label;
+    document.getElementById('locationLat').value = item.lat || '';
+    document.getElementById('locationLng').value = item.lng || '';
+    closeDropdown();
+}
+
+function closeDropdown() {
+    const dd = document.getElementById('locationDropdown');
+    if (dd) dd.classList.remove('open');
+}
+
+document.addEventListener('click', e => {
+    if (!e.target.closest('#locationWrap')) setTimeout(closeDropdown, 150);
+});
+
+function useMyGPS() {
+    showToast('📍 GPS 위치를 가져오는 중...');
+    navigator.geolocation.getCurrentPosition(
+        pos => {
+            const lat = pos.coords.latitude, lng = pos.coords.longitude;
+            fetch(`https://dapi.kakao.com/v2/local/geo/coord2regioncode.json?x=${lng}&y=${lat}`, {
+                headers: { 'Authorization': 'KakaoAK ' + KAKAO_REST_KEY }
+            })
+            .then(r => r.json())
+            .then(data => {
+                const doc = (data.documents || []).find(d => d.region_type === 'H') || data.documents?.[0];
+                const label = [doc?.region_2depth_name, doc?.region_3depth_name].filter(Boolean).join(' ') || '현재위치';
+                document.getElementById('locationInput').value = label;
+                document.getElementById('locationLat').value = lat;
+                document.getElementById('locationLng').value = lng;
+                document.getElementById('locationText').value = label;
+                closeDropdown();
+                showToast('✅ 위치가 설정됐어요');
+            })
+            .catch(() => showToast('❌ 위치 변환에 실패했어요'));
+        },
+        () => showToast('❌ 위치 권한이 필요해요')
+    );
+}
+
+function hideResults() { closeDropdown(); }
+
+// ===== 글쓰기 제출 =====
+function submitPost(event) {
+    event.preventDefault();
+    const user = getCurrentUser();
+    if (!user) { alert('로그인이 필요합니다.'); showPage(4); return; }
+
+    const lat = parseFloat(document.getElementById('locationLat').value) || null;
+    const lng = parseFloat(document.getElementById('locationLng').value) || null;
+    // locationText는 검색 선택 or GPS로 확정된 값. 없으면 직접 입력값 사용
+    const locText = document.getElementById('locationText').value.trim() || document.getElementById('locationInput').value.trim();
+
+    if (!locText) { alert('위치를 입력하세요.'); return; }
+
+    const imageFile = document.getElementById('image').files[0];
+    const buildPost = (imageData) => ({
+        id: Math.max(...posts.map(p=>p.id))+1,
+        category: document.getElementById('category').value,
+        title: document.getElementById('title').value,
+        content: document.getElementById('content').value,
+        location: '📍'+locText,
+        lat, lng,
+        link: document.getElementById('link').value,
+        people: parseInt(document.getElementById('people').value),
+        participants: 1,
+        image: imageData,
+        author: user.id
+    });
+
+    const finish = (data) => {
+        posts.push(buildPost(data));
+        document.getElementById('writeForm').reset();
+        document.getElementById('locationLat').value='';
+        document.getElementById('locationLng').value='';
+        document.getElementById('locationText').value='';
+        currentCategory='전체';
+        renderPosts();
+        showPage(1);
+    };
+
+    if (imageFile) {
+        const reader = new FileReader();
+        reader.onload = e => finish(e.target.result);
+        reader.readAsDataURL(imageFile);
+    } else finish(null);
+}
+
+// ===== 마이페이지 =====
+function showMyPage() {
+    const user = getCurrentUser();
+    if (!user) { showPage(4); return; }
+    document.getElementById('mypageAvatar').textContent = user.nickname.charAt(0).toUpperCase();
+    document.getElementById('mypageUsername').textContent = user.nickname;
+    document.getElementById('mypageUserId').textContent = '@'+user.id;
+    renderMyPosts(user.id);
+    showPage(6);
+}
+
+function renderMyPosts(userId) {
+    const container = document.getElementById('myPostList');
+    const myPosts = posts.filter(p=>p.author===userId);
+    if (!myPosts.length) { container.innerHTML='<div class="mypage-empty">아직 작성한 글이 없어요.</div>'; return; }
+    container.innerHTML = '<div class="my-post-list">'+myPosts.map(post=>{
+        const status=getStatus(post), pct=Math.round((post.participants/post.people)*100), isDone=status==='done';
+        const label={done:'완료',urgent:'임박',active:'진행 중'}[status];
+        return `<div class="my-post-item" onclick="viewPost(${post.id})">
+            <div class="post-status" style="flex-shrink:0"><div class="status-dot status-dot--${status}"></div><span class="status-text status-text--${status}">${label}</span></div>
+            <div class="my-post-item-info">
+                <div class="my-post-item-title${isDone?' my-post-item-title--done':''}">${post.title}</div>
+                <div class="my-post-item-meta">${post.location} · ${post.participants}/${post.people}명</div>
+            </div>
+            <div class="my-post-item-bar"><div class="progress-bar-bg"><div class="progress-bar-fill${isDone?' progress-bar-fill--done':''}" style="width:${pct}%"></div></div></div>
+        </div>`;
+    }).join('')+'</div>';
+}
+
+// ===== 로그인 =====
+function doLogin() {
+    const id=document.getElementById('loginId').value.trim(), pw=document.getElementById('loginPw').value;
+    const err=document.getElementById('loginError');
+    if (!id||!pw) { showErr(err,'아이디와 비밀번호를 입력하세요.'); return; }
+    const user=getUsers().find(u=>u.id===id&&u.pw===pw);
+    if (!user) { showErr(err,'아이디 또는 비밀번호가 올바르지 않습니다.'); return; }
+    err.classList.remove('show');
+    setCurrentUser({id:user.id,nickname:user.nickname});
+    updateHeader();
+    document.getElementById('loginId').value='';
+    document.getElementById('loginPw').value='';
+    showPage(1);
+}
+
+// ===== 회원가입 =====
+function doSignup() {
+    const id=document.getElementById('signupId').value.trim(), nick=document.getElementById('signupNick').value.trim(), pw=document.getElementById('signupPw').value;
+    const err=document.getElementById('signupError');
+    if (!id||!nick||!pw) { showErr(err,'모든 항목을 입력하세요.'); return; }
+    const users=getUsers();
+    if (users.find(u=>u.id===id)) { showErr(err,'이미 사용 중인 아이디입니다.'); return; }
+    users.push({id,nickname:nick,pw}); saveUsers(users);
+    err.classList.remove('show');
+    setCurrentUser({id,nickname:nick}); updateHeader();
+    document.getElementById('signupId').value='';
+    document.getElementById('signupNick').value='';
+    document.getElementById('signupPw').value='';
+    alert(`환영합니다, ${nick}님! 🎉`);
+    showPage(1);
+}
+
+function showErr(el,msg) { el.textContent=msg; el.classList.add('show'); }
+
+// ===== 토스트 =====
+function showToast(msg) {
+    const t=document.getElementById('gpsToast');
+    t.textContent=msg; t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer=setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// ===== 초기화 =====
+updateHeader();
+renderPosts();
+</script>
+</body>
+</html>
